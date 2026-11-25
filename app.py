@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 2. SIDEBAR NAVIGASI (Dengan Menu Perbandingan Ditambahkan) ---
+# --- 2. SIDEBAR NAVIGASI ---
 st.sidebar.title("📌 Navigasi Menu")
 menu = st.sidebar.selectbox(
     "Pilih Halaman",
@@ -30,17 +30,15 @@ menu = st.sidebar.selectbox(
 # --- 3. FUNGSI MEMUAT DATASET ---
 @st.cache_data
 def load_data():
-    # Pastikan file Mall_Customers.csv berada di direktori yang sesuai (misal: dalam folder venv/)
-    url = "https://raw.githubusercontent.com/AliFaridzR/Mall_Customers.csv/refs/heads/main/Mall_Customers.csv"
+    url = "https://raw.githubusercontent.com/AliFaridzR/Mall_Customers.csv/main/Mall_Customers.csv"
     df = pd.read_csv(url)
-
-
-
+    return df
 
 # Memanggil fungsi load data
 try:
     df_mall = load_data()
 except Exception as e:
+    st.sidebar.error(f"Error memuat dataset: {e}")
     df_mall = None
 
 # ==========================================
@@ -61,7 +59,7 @@ if menu == 'Halaman Utama':
         st.markdown("### 🔍 Pratinjau Data Mentah")
         st.dataframe(df_mall.head(10), use_container_width=True)
     else:
-        st.warning("⚠️ File `Mall_Customers.csv` belum ditemukan di direktori. Harap letakkan file dataset pada path yang benar.")
+        st.warning("⚠️ Dataset gagal dimuat. Pastikan koneksi internet aktif atau periksa URL dataset.")
 
 # ==========================================
 # HALAMAN 2: EKSPLORASI DATA (EDA)
@@ -123,11 +121,12 @@ elif menu == 'Analisis Gender & K-Means':
         k_value = st.slider("Pilih Jumlah Klaster (K)", min_value=2, max_value=6, value=5)
 
         kmeans = KMeans(n_clusters=k_value, random_state=42, n_init=10)
-        df_mall['Cluster'] = kmeans.fit_predict(X)
+        df_plot = df_mall.copy()
+        df_plot['Cluster'] = kmeans.fit_predict(X)
 
         fig_km, ax_km = plt.subplots(figsize=(9, 6))
         sns.scatterplot(
-            data=df_mall,
+            data=df_plot,
             x='Annual Income (k$)',
             y='Spending Score (1-100)',
             hue='Cluster',
@@ -157,34 +156,34 @@ elif menu == 'Perbandingan Algoritma Klustering':
     st.divider()
 
     if df_mall is not None:
-        # Preprocessing data untuk algoritma lain
-        X = df_mall[['Annual Income (k$)', 'Spending Score (1-100)']].values
+        df_comp = df_mall.copy()
+        X = df_comp[['Annual Income (k$)', 'Spending Score (1-100)']].values
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
         # 1. K-Means
         kmeans_comp = KMeans(n_clusters=5, random_state=42, n_init=10)
-        df_mall['KMeans_C'] = kmeans_comp.fit_predict(X)
+        df_comp['KMeans_C'] = kmeans_comp.fit_predict(X)
 
         # 2. Hierarchical (Agglomerative)
         hc_comp = AgglomerativeClustering(n_clusters=5, metric='euclidean', linkage='ward')
-        df_mall['HC_C'] = hc_comp.fit_predict(X_scaled)
+        df_comp['HC_C'] = hc_comp.fit_predict(X_scaled)
 
         # 3. DBSCAN
         dbscan_comp = DBSCAN(eps=0.5, min_samples=5)
-        df_mall['DBSCAN_C'] = dbscan_comp.fit_predict(X_scaled)
+        df_comp['DBSCAN_C'] = dbscan_comp.fit_predict(X_scaled)
 
         # Menampilkan Grafik Perbandingan 3 Algoritma
         fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
-        sns.scatterplot(data=df_mall, x='Annual Income (k$)', y='Spending Score (1-100)', hue='KMeans_C', palette='viridis', ax=axes[0], s=80)
+        sns.scatterplot(data=df_comp, x='Annual Income (k$)', y='Spending Score (1-100)', hue='KMeans_C', palette='viridis', ax=axes[0], s=80)
         axes[0].set_title("1. K-Means (K=5)")
         axes[0].scatter(kmeans_comp.cluster_centers_[:, 0], kmeans_comp.cluster_centers_[:, 1], s=250, c='red', marker='X', label='Centroid')
 
-        sns.scatterplot(data=df_mall, x='Annual Income (k$)', y='Spending Score (1-100)', hue='HC_C', palette='plasma', ax=axes[1], s=80)
+        sns.scatterplot(data=df_comp, x='Annual Income (k$)', y='Spending Score (1-100)', hue='HC_C', palette='plasma', ax=axes[1], s=80)
         axes[1].set_title("2. Hierarchical Clustering (Ward)")
 
-        sns.scatterplot(data=df_mall, x='Annual Income (k$)', y='Spending Score (1-100)', hue='DBSCAN_C', palette='deep', ax=axes[2], s=80)
+        sns.scatterplot(data=df_comp, x='Annual Income (k$)', y='Spending Score (1-100)', hue='DBSCAN_C', palette='deep', ax=axes[2], s=80)
         axes[2].set_title("3. DBSCAN (Auto / Noise Detection)")
 
         plt.tight_layout()
@@ -192,22 +191,21 @@ elif menu == 'Perbandingan Algoritma Klustering':
 
         st.markdown("### 📋 Ringkasan Perbedaan Algoritma")
         st.write("""
-        K-Means Clustering: Membutuhkan penentuan nilai $K$ di awal, sangat cepat, dan menggunakan titik pusat (centroid).
-        Hierarchical Clustering: Membentuk struktur bertingkat (hierarki) dan sangat baik untuk melihat hubungan jarak antar kelompok data.
-        DBSCAN: Berbasis kerapatan (density), mampu mendeteksi bentuk klaster bebas, serta otomatis mendeteksi data anomali (*noise*).
+        * **K-Means Clustering:** Membutuhkan penentuan nilai $K$ di awal, sangat cepat, dan menggunakan titik pusat (*centroid*).
+        * **Hierarchical Clustering:** Membentuk struktur bertingkat (hierarki) dan sangat baik untuk melihat hubungan jarak antar kelompok data.
+        * **DBSCAN:** Berbasis kerapatan (*density*), mampu mendeteksi bentuk klaster bebas, serta otomatis mendeteksi data anomali (*noise*).
         """)
     else:
         st.error("Dataset `Mall_Customers.csv` tidak tersedia.")
 
 # ==========================================
-# FORM SIMULASI SEGMEN (Perbaikan Menggunakan Model K-Means Asli)
+# HALAMAN 5: FORM SIMULASI SEGMEN
 # ==========================================
 elif menu == 'Form Simulasi Segmen':
     st.title('📝 Form Simulasi Prediksi Segmen Pelanggan')
     st.markdown("Masukkan karakteristik pelanggan baru. Hasil prediksi akan dikelompokkan secara otomatis menggunakan model **K-Means Clustering** yang telah dilatih dari dataset.")
     st.divider()
 
-    # Menggunakan form agar rapi, tombol submit memproses data sekaligus
     with st.form("form_segmentasi"):
         st.subheader("Formulir Input Data Pelanggan")
 
@@ -219,28 +217,28 @@ elif menu == 'Form Simulasi Segmen':
             income_input = st.number_input("Pendapatan Tahunan (k$)", min_value=10, max_value=150, value=50)
             spending_input = st.slider("Skor Pengeluaran / Spending Score (1-100)", min_value=1, max_value=100, value=50)
 
-        # Tombol Submit Form
         submit_val = st.form_submit_button(label="Proses Prediksi Segmen")
 
-    # Logika yang dijalankan setelah tombol "Proses Prediksi Segmen" ditekan
     if submit_val:
         if df_mall is not None:
             st.success("Data berhasil diproses oleh model K-Means!")
 
-            # 1. Melatih ulang model K-Means dengan K=5 (atau jumlah cluster optimal)
+            # 1. Melatih model K-Means dengan K=5
             X_train = df_mall[['Annual Income (k$)', 'Spending Score (1-100)']]
             kmeans_model = KMeans(n_clusters=5, random_state=42, n_init=10)
             kmeans_model.fit(X_train)
 
-            # 2. Melakukan prediksi klaster untuk input baru dari user
-            input_data = [[income_input, spending_input]]
+            # 2. Menggunakan DataFrame dengan nama kolom yang sama untuk menghindari warning sklearn
+            input_data = pd.DataFrame({
+                'Annual Income (k$)': [income_input],
+                'Spending Score (1-100)': [spending_input]
+            })
             predicted_cluster = kmeans_model.predict(input_data)[0]
 
             # 3. Menampilkan Hasil Prediksi Klaster
-            st.markdown(f"### Hasil Analisis Segmen:")
+            st.markdown("### Hasil Analisis Segmen:")
             st.info(f"Pelanggan Masuk ke dalam **Klaster {predicted_cluster}**")
 
-            # Penjelasan deskriptif berdasarkan karakteristik klaster
             if income_input > 70 and spending_input > 60:
                 deskripsi = "🌟 **Target Utama / VIP**: Pendapatan tinggi dan skor pengeluaran tinggi. Sangat potensial untuk program loyalitas."
             elif income_input > 70 and spending_input <= 40:
