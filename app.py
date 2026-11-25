@@ -34,7 +34,7 @@ def load_data():
     url = "https://raw.githubusercontent.com/AliFaridzR/Mall_Customers.csv/refs/heads/main/Mall_Customers.csv"
     df = pd.read_csv(url)
 
-print(df.head())
+
 
 
 # Memanggil fungsi load data
