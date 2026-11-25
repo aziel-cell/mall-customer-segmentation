@@ -35,7 +35,7 @@ def load_data():
     df = pd.read_csv(url)
 
 print(df.head())
-    return df
+
 
 # Memanggil fungsi load data
 try:
