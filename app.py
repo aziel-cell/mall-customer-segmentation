@@ -31,7 +31,10 @@ menu = st.sidebar.selectbox(
 @st.cache_data
 def load_data():
     # Pastikan file Mall_Customers.csv berada di direktori yang sesuai (misal: dalam folder venv/)
-    df = pd.read_csv('venv/Mall_Customers.csv')
+    url = "https://raw.githubusercontent.com/AliFaridzR/Mall_Customers.csv/refs/heads/main/Mall_Customers.csv"
+    df = pd.read_csv(url)
+
+print(df.head())
     return df
 
 # Memanggil fungsi load data
